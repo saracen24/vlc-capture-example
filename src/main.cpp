@@ -7,13 +7,19 @@
 using namespace std;
 using namespace cv;
 
-struct context {
-  uint8_t *data;
+struct meta_t {
+  unsigned width = 240;
+  unsigned height = 160;
+  unsigned channels = 3;
+} kMeta;
+
+struct context_t {
+  byte *data;
   mutex mtx;
 };
 
 static void *lock(void *data, void **p_pixels) {
-  struct context *ctx = static_cast<struct context *>(data);
+  struct context_t *ctx = static_cast<struct context_t *>(data);
 
   ctx->mtx.lock();
   *p_pixels = ctx->data;
@@ -22,13 +28,13 @@ static void *lock(void *data, void **p_pixels) {
 }
 
 static void unlock(void *data, void *id, void *const *p_pixels) {
-  struct context *ctx = static_cast<struct context *>(data);
+  struct context_t *ctx = static_cast<struct context_t *>(data);
 
   ctx->mtx.unlock();
 }
 
 void display(void *opaque, void *picture) {
-  Mat frame = Mat(160, 240, CV_8UC3, picture);
+  Mat frame = Mat(kMeta.height, kMeta.width, CV_8UC3, picture);
   //  resize(frame, frame, frame.size() / 4);
   cvtColor(frame, frame, COLOR_RGB2BGR);
   imshow("Show", frame);
@@ -49,11 +55,12 @@ int main(int argc, char *argv[]) {
 
   //  libvlc_video_set_scale(mp, 0.2f);
 
-  struct context ctx;
-  ctx.data = new unsigned char[240 * 160 * 3];
+  struct context_t ctx;
+  ctx.data = new byte[kMeta.width * kMeta.height * kMeta.channels];
 
   libvlc_video_set_callbacks(mp, lock, unlock, display, &ctx);
-  libvlc_video_set_format(mp, "RV24", 240, 160, 240 * 3);
+  libvlc_video_set_format(mp, "RV24", kMeta.width, kMeta.height,
+                          kMeta.width * kMeta.channels);
 
   //  libvlc_media_player_set_rate(mp, 1.f);
   libvlc_audio_set_mute(mp, true);
